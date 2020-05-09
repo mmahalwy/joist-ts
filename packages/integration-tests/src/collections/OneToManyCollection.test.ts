@@ -1,8 +1,8 @@
 import { EntityManager } from "joist-orm";
 import { keyToNumber } from "joist-orm/build/serde";
-import { knex } from "../setupDbTests";
-import { Author, Book, BookOpts, Publisher, Tag } from "../entities";
+import { Author, Book, BookOpts, Publisher } from "../entities";
 import { insertAuthor, insertBook, insertPublisher } from "../entities/factories";
+import { knex } from "../setupDbTests";
 
 describe("OneToManyCollection", () => {
   it("loads collections", async () => {
@@ -222,5 +222,16 @@ describe("OneToManyCollection", () => {
 
     // Then we still only have one entry
     expect(authors.length).toEqual(1);
+  });
+
+  it("loads populated collections", async () => {
+    await insertAuthor({ first_name: "a1" });
+    await insertBook({ title: "t1", author_id: 1 });
+    await insertBook({ title: "t2", author_id: 1 });
+
+    const em = new EntityManager(knex);
+    const a1 = await em.load(Author, "1");
+    const books = await a1.books.load({ populate: "reviews" });
+    expect(books[0].reviews.get.length).toEqual(0);
   });
 });

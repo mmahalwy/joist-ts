@@ -91,6 +91,7 @@ export interface LoadedReference<T extends Entity, U extends Entity, N extends n
 
 /** A collection of `U` within `T`, either one-to-many or many-to-many. */
 export interface Collection<T extends Entity, U extends Entity> extends Relation<T, U> {
+  load<H extends LoadHint<U>>(opts?: { populate?: H, withDeleted?: boolean  }): Promise<ReadonlyArray<Loaded<U, H>>>;
   load(opts?: { withDeleted: boolean }): Promise<ReadonlyArray<U>>;
 
   find(id: IdOf<U>): Promise<U | undefined>;

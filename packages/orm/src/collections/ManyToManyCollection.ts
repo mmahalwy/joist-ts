@@ -1,9 +1,9 @@
 import DataLoader from "dataloader";
-import { Collection, ensureNotDeleted, Entity, EntityConstructor, getEm, IdOf } from "../";
-import { getOrSet, remove } from "../utils";
-import { keyToNumber, keyToString } from "../serde";
-import { AbstractRelationImpl } from "./AbstractRelationImpl";
+import { Collection, ensureNotDeleted, Entity, EntityConstructor, getEm, IdOf, LoadHint } from "../";
 import { getMetadata } from "../EntityManager";
+import { keyToNumber, keyToString } from "../serde";
+import { getOrSet, remove } from "../utils";
+import { AbstractRelationImpl } from "./AbstractRelationImpl";
 
 export class ManyToManyCollection<T extends Entity, U extends Entity> extends AbstractRelationImpl<U[]>
   implements Collection<T, U> {
@@ -34,7 +34,7 @@ export class ManyToManyCollection<T extends Entity, U extends Entity> extends Ab
     return opts?.withDeleted === true ? [...entities] : entities.filter((e) => !e.isDeletedEntity);
   }
 
-  async load(opts?: { withDeleted?: boolean }): Promise<ReadonlyArray<U>> {
+  async load(opts?: { withDeleted?: boolean, populate?: LoadHint<U> }): Promise<ReadonlyArray<U>> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (this.loaded === undefined) {
       // TODO This key is basically a Reference, whenever we have that.
@@ -42,6 +42,9 @@ export class ManyToManyCollection<T extends Entity, U extends Entity> extends Ab
       const key = `${this.columnName}=${this.entity.id}`;
       this.loaded = await loaderForJoinTable(this).load(key);
       this.maybeApplyAddedAndRemovedBeforeLoaded();
+    }
+    if (opts && opts.populate) {
+      await getEm(this.entity).populate(this.loaded! as ReadonlyArray<U>, opts.populate);
     }
     return this.filterDeleted(this.loaded!, opts) as ReadonlyArray<U>;
   }

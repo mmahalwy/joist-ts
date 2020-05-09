@@ -1,10 +1,10 @@
 import DataLoader from "dataloader";
-import { Collection, ensureNotDeleted, getEm, IdOf } from "../";
+import { Collection, ensureNotDeleted, getEm, IdOf, Loaded, LoadHint } from "../";
 import { Entity, EntityMetadata, getMetadata } from "../EntityManager";
-import { getOrSet, groupBy, remove } from "../utils";
-import { ManyToOneReference } from "./ManyToOneReference";
 import { maybeResolveReferenceToId } from "../serde";
+import { getOrSet, groupBy, remove } from "../utils";
 import { AbstractRelationImpl } from "./AbstractRelationImpl";
+import { ManyToOneReference } from "./ManyToOneReference";
 
 export class OneToManyCollection<T extends Entity, U extends Entity> extends AbstractRelationImpl<U[]>
   implements Collection<T, U> {
@@ -29,8 +29,9 @@ export class OneToManyCollection<T extends Entity, U extends Entity> extends Abs
   }
 
   // opts is an internal parameter
-  async load(opts?: { withDeleted?: boolean }): Promise<readonly U[]> {
-    ensureNotDeleted(this.entity, { ignore: "pending" });
+  async load(opts?: { withDeleted?: boolean }): Promise<readonly U[]>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<readonly Loaded<U, H>[]>;
+  async load(opts?: { withDeleted?: boolean; populate?: LoadHint<U> }): Promise<readonly U[]> {
     if (this.loaded === undefined) {
       if (this.entity.id === undefined) {
         this.loaded = [];
@@ -38,6 +39,9 @@ export class OneToManyCollection<T extends Entity, U extends Entity> extends Abs
         this.loaded = await loaderForCollection(this).load(this.entity.id);
       }
       this.maybeAppendAddedBeforeLoaded();
+    }
+    if (opts && opts.populate) {
+      await this.entity.__orm.em.populate(this.loaded, opts.populate);
     }
     return this.filterDeleted(this.loaded, opts);
   }
