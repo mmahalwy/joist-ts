@@ -77,6 +77,10 @@ describe("EntityManager.lens", () => {
     await insertAuthor({ first_name: "a1", publisher_id: 1 });
     const em = new EntityManager(knex);
     const p1 = await em.load(Publisher, "1");
+    type l2 = Lens<Publisher>;
+    const l1 = (p: Lens<Publisher>) => p.authors.books;
+    const l2 = (p: Lens<Publisher>) => p.authors;
+    const l3 = (p: Lens<Publisher>) => p.authors.hasBooks;
     const hasBooks: boolean[] = await p1.load((p) => p.authors.hasBooks);
     expect(hasBooks).toEqual([false]);
   });
@@ -85,7 +89,7 @@ describe("EntityManager.lens", () => {
     await insertAuthor({ first_name: "a1" });
     const em = new EntityManager(knex);
     const a1 = await em.load(Author, "1");
-    const publisherName: string | undefined = await a1.load((a) => a.publisher.name);
+    const publisherName= await a1.load((a) => a.publisher.name);
     expect(publisherName).toEqual(undefined);
   });
 

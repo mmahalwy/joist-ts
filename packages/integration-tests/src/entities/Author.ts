@@ -61,6 +61,11 @@ export class Author extends AuthorCodegen {
   async hasBooks(): Promise<boolean> {
     return (await this.books.load()).length > 0;
   }
+
+  /** Example of an async boolean that can be navigated via a lens. */
+  async numberOfBooks2(): Promise<number> {
+    return (await this.books.load()).length;
+  }
 }
 
 authorConfig.cascadeDelete("books");

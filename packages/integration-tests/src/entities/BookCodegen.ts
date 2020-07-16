@@ -12,6 +12,7 @@ import {
   Changes,
   newChangesProxy,
   Lens,
+  LensResult,
   loadLens,
   LoadHint,
   Loaded,
@@ -172,7 +173,7 @@ export abstract class BookCodegen extends BaseEntity {
     return newChangesProxy((this as any) as Book);
   }
 
-  async load<U, V>(fn: (lens: Lens<Book>) => Lens<U, V>): Promise<V> {
+  async load<U, V>(fn: (lens: Lens<Book>) => V): Promise<LensResult<V>> {
     return loadLens((this as any) as Book, fn);
   }
 

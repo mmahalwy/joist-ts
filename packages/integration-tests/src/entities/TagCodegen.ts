@@ -12,6 +12,7 @@ import {
   Changes,
   newChangesProxy,
   Lens,
+  LensResult,
   loadLens,
   LoadHint,
   Loaded,
@@ -117,7 +118,7 @@ export abstract class TagCodegen extends BaseEntity {
     return newChangesProxy((this as any) as Tag);
   }
 
-  async load<U, V>(fn: (lens: Lens<Tag>) => Lens<U, V>): Promise<V> {
+  async load<U, V>(fn: (lens: Lens<Tag>) => V): Promise<LensResult<V>> {
     return loadLens((this as any) as Tag, fn);
   }
 

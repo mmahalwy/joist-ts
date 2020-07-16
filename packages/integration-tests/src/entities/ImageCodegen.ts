@@ -12,6 +12,7 @@ import {
   Changes,
   newChangesProxy,
   Lens,
+  LensResult,
   loadLens,
   LoadHint,
   Loaded,
@@ -162,7 +163,7 @@ export abstract class ImageCodegen extends BaseEntity {
     return newChangesProxy((this as any) as Image);
   }
 
-  async load<U, V>(fn: (lens: Lens<Image>) => Lens<U, V>): Promise<V> {
+  async load<U, V>(fn: (lens: Lens<Image>) => V): Promise<LensResult<V>> {
     return loadLens((this as any) as Image, fn);
   }
 

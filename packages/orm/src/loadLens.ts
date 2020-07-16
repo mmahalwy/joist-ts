@@ -4,13 +4,21 @@ type LoadLike<U> = { load(): Promise<U> };
 /** Generically matches a property or zero-arg method that returns a promise. */
 type PromiseFnLike<U> = () => PromiseLike<U>;
 
-/** Given a parent type U, and a new type V, returns V[] if U is already an array, i.e. we're in flatMap mode. */
-type MaybeArray<U, V> = U extends ReadonlyArray<any> ? (V extends ReadonlyArray<any> ? V : V[]) : V;
+/** Given a parent type R, and a new type U, returns U[] if R is already an array, i.e. we're in flatMap mode. */
+type MaybeArray<R, U> = R extends ReadonlyArray<any>
+  ? U extends boolean
+    ? U[]
+    : U extends ReadonlyArray<any>
+    ? U
+    : U[]
+  : U;
 
 /** Given a type T that we come across in the path, de-array it to continue our flatMap-ish semantics. */
 type MaybeDropArray<T> = T extends ReadonlyArray<infer U> ? U : T;
 
 type DropUndefined<T> = Exclude<T, undefined>;
+
+type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined | null;
 
 /**
  * A type for declaratively walking the object graph.
@@ -25,9 +33,24 @@ export type Lens<T, R = T> = {
   [P in keyof T]: T[P] extends LoadLike<infer U>
     ? Lens<MaybeDropArray<DropUndefined<U>>, MaybeArray<R, U>>
     : T[P] extends PromiseFnLike<infer U>
-    ? Lens<MaybeDropArray<DropUndefined<U>>, MaybeArray<R, U>>
+    ? U extends Builtin
+      ? MaybeArray<R, U>
+      : Lens<MaybeDropArray<DropUndefined<U>>, MaybeArray<R, U>>
+    : T[P] extends Builtin | Builtin[]
+    ? MaybeArray<R, T[P]>
     : Lens<MaybeDropArray<DropUndefined<T[P]>>, MaybeArray<R, T[P]>>;
 };
+
+type t4 = MaybeArray<object[], boolean>;
+type MakeArray<U> = U extends boolean ? Array<U> : U;
+type T5 = MakeArray<boolean>;
+
+/**
+ * Unwraps a Lens result, which if a lens transversed to a primitive will be just the primitive itself.
+ *
+ * See https://github.com/microsoft/TypeScript/pull/12447
+ */
+export type LensResult<L> = L extends Lens<any, infer R> ? R : L;
 
 /**
  * Allows declaratively loading/traversing several layers of references at once.
@@ -41,7 +64,7 @@ export type Lens<T, R = T> = {
 // For some reason accepting Lens<this, this> does not work when called from within the entity
 // subclass itself, so we use the codegen hammer in our subclass to force the right Lens type
 // in a .load stub that just calls us for the implementation.
-export async function loadLens<T, U, V>(start: T, fn: (lens: Lens<T>) => Lens<U, V>): Promise<V> {
+export async function loadLens<T, U, V>(start: T, fn: (lens: Lens<T>) => V): Promise<LensResult<V>> {
   const paths = collectPaths(fn);
   let current: any = start;
   // Now evaluate each step of the path

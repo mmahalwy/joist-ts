@@ -23,6 +23,7 @@ import {
   hasOne,
   hasOneToOne,
   Lens,
+  LensResult,
   Loaded,
   LoadHint,
   loadLens,
@@ -249,7 +250,7 @@ export function generateEntityCodegenFile(config: Config, meta: EntityDbMetadata
         return ${newChangesProxy}(this as any as ${entityName});
       }
 
-      async load<U, V>(fn: (lens: ${Lens}<${entity.type}>) => ${Lens}<U, V>): Promise<V> {
+      async load<U, V>(fn: (lens: ${Lens}<${entity.type}>) => V): Promise<${LensResult}<V>> {
         return ${loadLens}(this as any as ${entityName}, fn);
       }
 
