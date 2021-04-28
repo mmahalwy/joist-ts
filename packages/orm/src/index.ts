@@ -68,6 +68,7 @@ export interface Reference<T extends Entity, U extends Entity, N extends never |
   idUntaggedOrFail: string;
 
   load(opts?: { withDeleted: boolean }): Promise<U | N>;
+  load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<Loaded<U, H> | N>;
 
   set(other: U | N): void;
 
@@ -96,6 +97,7 @@ export interface LoadedReference<T extends Entity, U extends Entity, N extends n
 /** A collection of `U` within `T`, either one-to-many or many-to-many. */
 export interface Collection<T extends Entity, U extends Entity> extends Relation<T, U> {
   load(opts?: { withDeleted: boolean }): Promise<ReadonlyArray<U>>;
+  load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<ReadonlyArray<Loaded<U, H>>>;
 
   find(id: IdOf<U>): Promise<U | undefined>;
 

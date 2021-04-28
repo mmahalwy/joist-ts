@@ -7,6 +7,8 @@ import {
   getEm,
   getMetadata,
   IdOf,
+  Loaded,
+  LoadHint,
   maybeResolveReferenceToId,
 } from "../index";
 import { remove } from "../utils";
@@ -36,8 +38,12 @@ export class OneToManyCollection<T extends Entity, U extends Entity>
     this.isCascadeDelete = getMetadata(entity).config.__data.cascadeDeleteFields.includes(fieldName as any);
   }
 
-  // opts is an internal parameter
-  async load(opts?: { withDeleted?: boolean }): Promise<readonly U[]> {
+  async load(opts?: { withDeleted: boolean }): Promise<readonly U[]>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<readonly Loaded<U, H>[]>;
+  async load<H extends LoadHint<U>>(opts?: {
+    withDeleted?: boolean;
+    populate?: H;
+  }): Promise<readonly U[] | readonly Loaded<U, H>[]> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (this.loaded === undefined) {
       if (this.entity.id === undefined) {
@@ -46,6 +52,9 @@ export class OneToManyCollection<T extends Entity, U extends Entity>
         this.loaded = await oneToManyDataLoader(getEm(this.entity), this).load(this.entity.id);
       }
       this.maybeAppendAddedBeforeLoaded();
+    }
+    if (opts?.populate && this.loaded) {
+      await getEm(this.entity).populate(this.loaded, opts.populate);
     }
     return this.filterDeleted(this.loaded, opts);
   }

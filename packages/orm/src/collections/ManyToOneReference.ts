@@ -1,4 +1,4 @@
-import { Entity, EntityMetadata, IdOf, isEntity } from "../EntityManager";
+import { Entity, EntityMetadata, IdOf, isEntity, Loaded, LoadHint } from "../EntityManager";
 import {
   deTagIds,
   ensureNotDeleted,
@@ -41,7 +41,9 @@ export class ManyToOneReference<T extends Entity, U extends Entity, N extends ne
     this.isCascadeDelete = otherMeta.config.__data.cascadeDeleteFields.includes(fieldName as any);
   }
 
-  async load(opts?: { withDeleted?: boolean }): Promise<U | N> {
+  async load(opts?: { withDeleted: boolean }): Promise<U | N>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<Loaded<U, H> | N>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate?: H }): Promise<U | Loaded<U, H> | N> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     const current = this.current();
     // Resolve the id to an entity
@@ -49,6 +51,9 @@ export class ManyToOneReference<T extends Entity, U extends Entity, N extends ne
       this.loaded = ((await getEm(this.entity).load(this.otherMeta.cstr, current)) as any) as U;
     }
     this.isLoaded = true;
+    if (opts?.populate && this.loaded) {
+      await getEm(this.loaded).populate(this.loaded, opts.populate);
+    }
     return this.filterDeleted(this.loaded, opts);
   }
 

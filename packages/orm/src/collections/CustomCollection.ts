@@ -1,5 +1,5 @@
-import { Entity, IdOf } from "../EntityManager";
-import { Collection, ensureNotDeleted, fail } from "../index";
+import { Entity, IdOf, Loaded, LoadHint } from "../EntityManager";
+import { Collection, ensureNotDeleted, fail, getEm } from "../index";
 import { AbstractRelationImpl } from "./AbstractRelationImpl";
 
 export type CustomCollectionOpts<T extends Entity, U extends Entity> = {
@@ -48,7 +48,12 @@ export class CustomCollection<T extends Entity, U extends Entity>
     return this._isLoaded;
   }
 
-  async load(opts?: { withDeleted?: boolean }): Promise<readonly U[]> {
+  async load(opts?: { withDeleted: boolean }): Promise<readonly U[]>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<readonly Loaded<U, H>[]>;
+  async load<H extends LoadHint<U>>(opts?: {
+    withDeleted?: boolean;
+    populate?: H;
+  }): Promise<readonly Loaded<U, H>[] | readonly U[]> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (!this.isLoaded) {
       if (this.loadPromise === undefined) {
@@ -60,8 +65,11 @@ export class CustomCollection<T extends Entity, U extends Entity>
         await this.loadPromise;
       }
     }
-
-    return this.doGet(opts);
+    const entities = this.doGet(opts);
+    if (opts?.populate && entities) {
+      await getEm(this.entity).populate(entities, opts.populate);
+    }
+    return entities;
   }
 
   initializeForNewEntity(): void {

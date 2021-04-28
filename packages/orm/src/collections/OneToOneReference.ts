@@ -1,4 +1,4 @@
-import { deTagIds, ensureNotDeleted, fail, getEm, IdOf, Reference, setField } from "../";
+import { deTagIds, ensureNotDeleted, fail, getEm, IdOf, Loaded, LoadHint, Reference, setField } from "../";
 import { oneToOneDataLoader } from "../dataloaders/oneToOneDataLoader";
 import { Entity, EntityMetadata, getMetadata } from "../EntityManager";
 import { AbstractRelationImpl } from "./AbstractRelationImpl";
@@ -67,14 +67,21 @@ export class OneToOneReference<T extends Entity, U extends Entity>
     throw new Error(`${this.entity}.${this.fieldName} was not loaded`);
   }
 
-  // opts is an internal parameter
-  async load(opts?: { withDeleted?: boolean }): Promise<U | undefined> {
+  async load(opts?: { withDeleted: boolean }): Promise<U | undefined>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<Loaded<U, H> | undefined>;
+  async load<H extends LoadHint<U>>(opts?: {
+    withDeleted?: boolean;
+    populate?: H;
+  }): Promise<U | Loaded<U, H> | undefined> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (!this.isLoaded) {
       if (!this.entity.isNewEntity) {
         this.loaded = await oneToOneDataLoader(getEm(this.entity), this).load(this.entity.idOrFail);
       }
       this.isLoaded = true;
+    }
+    if (opts?.populate && this.loaded) {
+      await getEm(this.loaded).populate(this.loaded, opts.populate);
     }
     return this.filterDeleted(this.loaded, opts);
   }

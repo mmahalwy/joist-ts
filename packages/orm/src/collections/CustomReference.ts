@@ -1,5 +1,5 @@
-import { Entity, IdOf } from "../EntityManager";
-import { ensureNotDeleted, fail, Reference, unsafeDeTagIds } from "../index";
+import { Entity, IdOf, Loaded, LoadHint } from "../EntityManager";
+import { ensureNotDeleted, fail, getEm, Reference, unsafeDeTagIds } from "../index";
 import { AbstractRelationImpl } from "./AbstractRelationImpl";
 
 export type CustomReferenceOpts<T extends Entity, U extends Entity, N extends never | undefined> = {
@@ -45,7 +45,9 @@ export class CustomReference<T extends Entity, U extends Entity, N extends never
     return this._isLoaded;
   }
 
-  async load(opts?: { withDeleted?: boolean }): Promise<U | N> {
+  async load(opts?: { withDeleted: boolean }): Promise<U | N>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<Loaded<U, H> | N>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate?: H }): Promise<U | Loaded<U, H> | N> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (!this.isLoaded) {
       if (this.loadPromise === undefined) {
@@ -57,8 +59,11 @@ export class CustomReference<T extends Entity, U extends Entity, N extends never
         await this.loadPromise;
       }
     }
-
-    return this.doGet(opts);
+    const entity = this.doGet(opts);
+    if (opts?.populate && entity) {
+      await getEm(entity).populate(entity, opts.populate);
+    }
+    return entity;
   }
 
   initializeForNewEntity(): void {

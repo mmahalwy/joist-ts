@@ -1,4 +1,4 @@
-import { Collection, ensureNotDeleted, Entity, EntityMetadata, getEm, getMetadata, IdOf } from "../";
+import { Collection, ensureNotDeleted, Entity, EntityMetadata, getEm, getMetadata, IdOf, Loaded, LoadHint } from "../";
 import { manyToManyDataLoader } from "../dataloaders/manyToManyDataLoader";
 import { getOrSet, remove } from "../utils";
 import { AbstractRelationImpl } from "./AbstractRelationImpl";
@@ -33,14 +33,22 @@ export class ManyToManyCollection<T extends Entity, U extends Entity>
     return opts?.withDeleted === true ? [...entities] : entities.filter((e) => !e.isDeletedEntity);
   }
 
-  async load(opts?: { withDeleted?: boolean }): Promise<ReadonlyArray<U>> {
+  async load(opts?: { withDeleted: boolean }): Promise<readonly U[]>;
+  async load<H extends LoadHint<U>>(opts?: { withDeleted?: boolean; populate: H }): Promise<readonly Loaded<U, H>[]>;
+  async load<H extends LoadHint<U>>(opts?: {
+    withDeleted?: boolean;
+    populate?: H;
+  }): Promise<readonly U[] | readonly Loaded<U, H>[]> {
     ensureNotDeleted(this.entity, { ignore: "pending" });
     if (this.loaded === undefined) {
       const key = `${this.columnName}=${this.entity.id}`;
       this.loaded = await manyToManyDataLoader(getEm(this.entity), this).load(key);
       this.maybeApplyAddedAndRemovedBeforeLoaded();
     }
-    return this.filterDeleted(this.loaded!, opts) as ReadonlyArray<U>;
+    if (opts?.populate && this.loaded) {
+      await getEm(this.entity).populate(this.loaded, opts.populate);
+    }
+    return this.filterDeleted(this.loaded!, opts) as readonly U[];
   }
 
   async find(id: IdOf<U>): Promise<U | undefined> {
